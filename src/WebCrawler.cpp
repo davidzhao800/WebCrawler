@@ -138,6 +138,9 @@ bool WebCrawler::isRelativeURL(string url){
 }
 
 bool WebCrawler::isHttpURL(string url){
+	if(url.substr(url.length() -4) == ".pdf" || url.substr(url.length() -4) == ".jpg"){
+		return false;
+	}
     const std::string urlRegexStr = "(http)://([\\w_-]+(?:(?:\\.[\\w_-]+)+))"
                                     "([\\w.,@?^=%&:/~+#-]*[\\w@?^=%&/~+#-])?";
     const regex urlRegex(urlRegexStr.c_str());
