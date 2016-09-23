@@ -17,71 +17,40 @@ using namespace std;
 
 int main() {
 
-	static queue<URLNode> *UrlQueue;
-	static queue<URLNode> UrlQueueTemp;
-	UrlQueue=new queue<URLNode>;
-	static std::unordered_set<string> *UrlHash=new unordered_set <string>;
+//	static queue<URLNode> *UrlQueue;
+//	static queue<URLNode> UrlQueueTemp;
+//	UrlQueue=new queue<URLNode>;
+//	static std::unordered_set<string> *UrlHash=new unordered_set <string>;
 
-//	cout << "Begin!" << endl; // prints !!!Hello World!!!
-//	ThreadPool* myPool = new ThreadPool(5);
-//	myPool->initializeThread();
+
+	cout << "Begin!" << endl; // prints !!!Hello World!!!
+	ThreadPool* myPool = new ThreadPool(5);
+	myPool->initializeThread();
 //	time_t t1 = time(NULL);
-//	//while(1);
+//	while(1);
 //	sleep(5);
-//	//myPool->destroyPool(10);
+//	myPool->destroyPool();
 //	time_t t2 = time(NULL);
 //	cout << t2 - t1 << " seconds elapsed\n" << endl;
-//	delete myPool;
+	delete myPool;
 
-	URLNode firstnode;
-	firstnode.setURL("www.nus.edu.sg", 1);
+//	URLNode firstnode;
+//	firstnode.setURL("www.nus.edu.sg", 1);
+//
+//	UrlHash->insert(firstnode.getRawString());
+//
+//	UrlQueue->push(firstnode);
 
-	UrlHash->insert(firstnode.getRawString());
+//	URLNode firstnode;
+//	firstnode.setURL("http://www.nus.edu.sg/fafa/heheh", 2);
+//
+//	pthread_t id;
+//	WebCrawler* webcrawlerwork = new WebCrawler(firstnode, id);
+//
+//	string url = "../././../haha.html";
 
-	UrlQueue->push(firstnode);
-
-	while (1) {
-		if (UrlQueue->size() <= 0) {
-			break;
-//			sleep(5);
-//			continue;
-		}
-
-		URLNode node =UrlQueue->front();
-		UrlQueue->pop();
-
-		WebCrawler* webcrawlerwork = new WebCrawler(node);
-
-		if(!webcrawlerwork->downloadHTML()) {
-			//cout << "Downloading error, deleting worker" << endl;
-			delete webcrawlerwork;
-			continue;
-		}
-
-		cout << "extracting: " +  node.getRawString() << endl;
-
-		if(!webcrawlerwork->extractURLs()) {
-			delete webcrawlerwork;
-			continue;
-		}
-		cout << "extracting done" << endl;
-
-		UrlQueueTemp = webcrawlerwork->HtmlUrlQueue;
-		while (UrlQueueTemp.size() > 0) {
-
-			URLNode NodeTemp = UrlQueueTemp.front();
-			UrlQueueTemp.pop();
-			unordered_set<std::string>::const_iterator got = UrlHash->find(
-					NodeTemp.getRawString());
-			if (got == UrlHash->end()) {
-				cout << NodeTemp.getRawString() << endl;
-				UrlHash->insert(NodeTemp.getRawString());
-
-				UrlQueue->push(NodeTemp);
-			}
-		}
-		delete webcrawlerwork;
-	}
+//
+//	cout << webcrawlerwork->relativeToAbsolute(url) << endl;
 
 	return 0;
 }

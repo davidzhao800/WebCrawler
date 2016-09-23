@@ -18,6 +18,7 @@ private:
 	string string_url;
 	string domain;
 	string attribute_url;
+	string path;
 
 public:
 
@@ -28,6 +29,7 @@ public:
 	void setURL(string url, int depth);
 	string getRawString();
 	string getDomain();
+	string getPath();
 	string getAttributeURL();
 	int getDepth();
 	int getPortNumber();

@@ -12,6 +12,9 @@
 #include <queue>
 #include <unordered_set>
 #include <string>
+#include "unistd.h"
+#include "WebCrawler.h"
+#include "URLNode.h"
 
 using namespace std;
 
@@ -21,16 +24,26 @@ public:
 	ThreadPool(int number_of_threads);
 	virtual ~ThreadPool();
 
-	//void destroyPool(int maxPollSecs);
+	void destroyPool();
 
 	void initializeThread();
 
 	static void *executeThread(void *param);
 
+	static pthread_mutex_t mutexUrlQueue;
+	static pthread_mutex_t mutexUrlHash;
+	static pthread_mutex_t mutexProgressQueue;
+	static pthread_mutex_t mutexProgressedCounter;
+//	static pthread_cond_t hasWork;
+//	static pthread_cond_t workDone;
+
 private:
 	int number_of_threads;
-	static int FileIndex;
-	static string FileName;
+
+	static unordered_set<string> *UrlHash;
+	static queue<URLNode> *UrlQueue;
+	static queue<URLNode> *ProgressQueue;
+	static queue<URLNode> UrlQueueTemp;
 
 };
 

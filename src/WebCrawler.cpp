@@ -18,12 +18,15 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <iostream>
+#include <chrono>
 #include "gumbo.h"
 
 using namespace std;
+using namespace std::chrono;
 
-WebCrawler::WebCrawler(URLNode urlnode) {
+WebCrawler::WebCrawler(URLNode urlnode, pthread_t threadid) {
 	node = urlnode;
+	threadID = threadid;
 }
 
 WebCrawler::~WebCrawler() {
@@ -37,17 +40,21 @@ bool WebCrawler::downloadHTML() {
 //	struct epoll_event ev;
 //	struct epoll_event events[5],eventsrecv[5];
 
-
 	int sock, bytes_recieved;
 	char send_data[1024],recv_data[1024];
 	struct hostent *host;
 	struct sockaddr_in server_addr;
 
-	//cout << "Resolving " + node.getDomain() << endl;
+//	if (node.getDepth() >= 2) {
+//		cout << threadID << ": Depth " << node.getDepth() << " exceed max depth." << endl;
+//		return false;
+//	}
+
+	cout << threadID << ": Resolving " + node.getDomain() << endl;
 	host = gethostbyname( node.getDomain().c_str());
 
 	if (host == NULL) {
-		cout<<"get dns failed"<<endl;
+		cout<< threadID << ": dns resolving failed"<<endl;
 		return false;
 	}
 	//cout<<"Host name :"<< h->h_name<<endl;
@@ -56,7 +63,7 @@ bool WebCrawler::downloadHTML() {
 	//create a Socket structure   - "Client Socket"
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Socket Creation Error!");
-		cout << "Socket Creation Error!" << endl;
+		cout << threadID << ": Socket Creation Error!" << endl;
 		return false;
 	}
 
@@ -65,56 +72,69 @@ bool WebCrawler::downloadHTML() {
 	server_addr.sin_addr = *((struct in_addr *)host->h_addr);
 	bzero(&(server_addr.sin_zero),8);
 
+	int value = 1;
+
+	//if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 	int opt=1;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-		perror("setsockopt(SO_REUSEADDR) failed");
-		cout << "setsockopt(SO_REUSEADDR) failed" << endl;
-		return false;
-	}
+//	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+//		perror("setsockopt(SO_REUSEADDR) failed");
+//		cout << threadID << ": setsockopt(SO_REUSEADDR) failed" << endl;
+//		return false;
+//	}
 
 //	if (fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0)|O_NONBLOCK) == -1) {
 //		perror("Set non-blocking socket Error");
 //		return false;
 //	}
 
+	clock_t t1 = clock();
 	if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1) {
 	    perror("Connect Error");
-	    cout << "Connect Error" << endl;
+	    cout << threadID << ": Connect Error" << endl;
 	    return false;
 	}
-
+//	cout << threadID << ": Downloading " + node.getRawString() << endl;
+//	cout << (node.getPath() + node.getAttributeURL()).c_str() << endl;
+//	cout << node.getDomain().c_str()  << endl;
 	char strRequest[1000];
-	sprintf(strRequest,"GET %s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n\r\n\r\n",node.getAttributeURL().c_str(),node.getDomain().c_str());
+	//cout << "GET " << (node.getPath() + node.getAttributeURL()).c_str() << endl;
+	//cout << "Host: " << node.getDomain().c_str() << endl;
+	sprintf(strRequest,"GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nUser-Agent: Mozilla/5.0\r\nCache-Control: max-age=0\r\nAccept: text/*;q=0.3, text/html;q=0.7, text/html;level=1\r\nAccept-Language: en-US,en;q=0.8\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3\r\n\r\n",
+			(node.getPath() + node.getAttributeURL()).c_str(), node.getDomain().c_str());
+
+	//	cout << t2 - t1 << " seconds elapsed\n" << endl;
 	int ret = send(sock,strRequest,sizeof(strRequest),0);
 
 	int flag=1;
 
 	while (flag) {
-		char buf[2048];
+		char buf[8192];
 		bzero(buf, sizeof(buf));
-		ret = recv(sock, buf, 2047, 0);
+		ret = recv(sock, buf, 8191, 0);
 		if (ret > 0) {
+//			if(htmlString.size() + 8191 > htmlString.max_size()) {
+//				cout << htmlString.size() << endl;
+//			}
 			htmlString += buf;
 		} else if (ret == 0) {
 			flag = 0;
-
+			double t = clock() - t1;
+			cout << threadID << ": response time of " << node.getDomain() << " is " << t/(CLOCKS_PER_SEC/1000) << endl;
 			close (sock);
-			if (node.getDepth() < 10) {
-				//printf("\n%s ", htmlString.c_str());
-				return true;
-			} else {
-				return false;
-			}
+			return true;
+
 		} else {
 			flag = 0;
 		}
 	}
-
+	cout << threadID << "should not see this!" << endl;
 	return true;
 }
 
 bool WebCrawler::isRelativeURL(string url){
-	return url.at(0) == '/';
+	if(url.find("mailto:") != string::npos)
+		return false;
+	return ( url.find("//") == string::npos);
 }
 
 bool WebCrawler::isHttpURL(string url){
@@ -125,9 +145,45 @@ bool WebCrawler::isHttpURL(string url){
 }
 
 bool WebCrawler::extractURLs() {
+
 	GumboOutput* output = gumbo_parse(htmlString.c_str());
+
 	_extractURLs(output->root);
 	return true;
+}
+
+string WebCrawler::relativeToAbsolute(string url){
+	string ab_url = "http://" + node.getDomain() + node.getPath();
+	string re_url = url;
+	string root = "";
+	size_t i;
+
+	if('/' == ab_url[ab_url.size()-1])
+	    root = ab_url.substr(0,ab_url.size()-1);
+	else
+		root = ab_url;
+
+	if (url[0] == '/') {
+		re_url = "http://" + node.getDomain() + url;
+	} else {
+		i = re_url.find("./");
+		while ( i != string::npos) {
+			if(i != 0 && re_url[i-1] == '.'){
+				root = root.substr(0, root.rfind('/'));
+//				cout << root << endl;
+				re_url = re_url.substr(3);
+//				cout << re_url << endl;
+			} else {
+				re_url = re_url.substr(2);
+//				cout << re_url << endl;
+			}
+			i = re_url.find("./");
+		}
+
+		re_url = root + '/' + re_url;
+	}
+
+	return re_url;
 }
 
 void WebCrawler::_extractURLs(GumboNode* gumboNode) {
@@ -138,19 +194,39 @@ void WebCrawler::_extractURLs(GumboNode* gumboNode) {
 			&& (href = gumbo_get_attribute(&gumboNode->v.element.attributes, "href"))) {
 
 		URLNode newURL;
-
-		string url = string(href->value);
-		if (isRelativeURL(url)){
-			url =  "http://" + node.getDomain() + url;
-		}
-
-		if (isHttpURL(url)) {
+		try {
+			string url = string(href->value);
 			//cout << url << endl;
-			newURL.setURL(url, node.getDepth() +1);
+			if (isRelativeURL(url)) {
+				url = relativeToAbsolute(url);
+//				int found = url.find("/");
+//				if (found != std::string::npos) {
+//					//url begins with /
+//					if (found == 0) {
+//						// domain name/<relative path>
+//						url = "http://" + node.getDomain() + url;
+//					}
+//					//there is a / , so subfolder
+//					else {
+//						//find last / of base url and append the url to this piece
+//						url = "http://" + node.getDomain() + node.getPath()  + url;
+//					}
+//				} else {
+//					url = "http://" + node.getDomain() + node.getPath()  + url;
+//				}
+			}
+			//cout << url << endl;
 
-			HtmlUrlQueue.push(newURL);
+			if (isHttpURL(url)) {
+
+				newURL.setURL(url, node.getDepth() + 1);
+				HtmlUrlQueue.push(newURL);
+			}
+		} catch (exception& e) {
+			cout << e.what() << '\n';
 		}
 	}
+
 	GumboVector* children = &gumboNode->v.element.children;
 	for (unsigned int i = 0; i < children->length; ++i)
 		_extractURLs(static_cast<GumboNode*>(children->data[i]));
