@@ -3,6 +3,10 @@
  *
  *  Created on: 13 Sep 2016
  *      Author: hzhao
+ *
+ *  This is the main logic of crawler, basically consists of two parts:
+ *  	download URL
+ *  	extract URL
  */
 
 #ifndef WEBCRAWLER_H_
@@ -22,11 +26,11 @@ class WebCrawler {
 public:
 	WebCrawler(URLNode node, pthread_t threadid);
 	virtual ~WebCrawler();
-	bool downloadHTML();
-	bool extractURLs();
+	bool downloadHTML();							// download URL, socket programming is here
+	bool extractURLs();								// parse html string and extract url using gumbo-parser lib
 	double getResponseTime();
-	string relativeToAbsolute(string str);
-	queue<URLNode> HtmlUrlQueue;
+	string relativeToAbsolute(string str);			// parse relative url to absolute url
+	queue<URLNode> HtmlUrlQueue;					// temporary queue for all found urls
 private:
 	void _extractURLs(GumboNode* node);
 	pthread_t threadID;

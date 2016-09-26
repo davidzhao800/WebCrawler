@@ -5,5 +5,13 @@ Memory friendly, low memory leaks, visiting 1000URL less than 100M
 Smartly Recognise relative path
 average response time
 
+How to run?
 
+change thread.conf
+change depth.conf
 
+Then run ./WebCrawler
+
+./GetResponseTime.sh
+
+./clearDB.sh

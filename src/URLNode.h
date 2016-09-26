@@ -3,6 +3,14 @@
  *
  *  Created on: 13 Sep 2016
  *      Author: hzhao
+ *
+ *  URL is parsed in this way:
+ *  string_url    http://domain.com:80/path/to/index.html
+ *  domain        domain.com
+ *  port_number   80
+ *  path          /path/to/
+ *  attribute_url index.html
+ *
  */
 
 #ifndef URLNODE_H_

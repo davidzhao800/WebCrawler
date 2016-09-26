@@ -58,6 +58,19 @@ int URLNode::getPortNumber() {
 	return port_number;
 }
 
+/**
+ *   Parse the URL and store them in URLNode
+ *
+ *  URL is parsed in this way:
+ *  string_url    http://domain.com:80/path/to/index.html
+ *  domain        domain.com
+ *  port_number   80
+ *  path          /path/to/
+ *  attribute_url index.html
+ *
+ *   @param null
+ *   @return null
+*/
 void URLNode::parseURL(){
 
 	int start = 0;

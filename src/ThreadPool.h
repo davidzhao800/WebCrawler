@@ -12,6 +12,8 @@
 #include <queue>
 #include <unordered_set>
 #include <string>
+#include <iostream>
+#include <fstream>
 #include "unistd.h"
 #include "WebCrawler.h"
 #include "URLNode.h"
@@ -20,30 +22,32 @@ using namespace std;
 
 class ThreadPool {
 public:
-	ThreadPool(); // by default number of thread is 2
-	ThreadPool(int number_of_threads);
+	ThreadPool(); 										// by default number of thread is 2
 	virtual ~ThreadPool();
 
-	void destroyPool();
+	void destroy();
 
 	void initializeThread();
 
 	static void *executeThread(void *param);
 
-	static pthread_mutex_t mutexUrlQueue;
-	static pthread_mutex_t mutexUrlHash;
-	static pthread_mutex_t mutexProgressQueue;
-	static pthread_mutex_t mutexProgressedCounter;
-//	static pthread_cond_t hasWork;
-//	static pthread_cond_t workDone;
+	static pthread_mutex_t mutexUrlQueue;                // mutex for URL Queue
+	static pthread_mutex_t mutexUrlHash;                 // mutex for sql database
+	static pthread_mutex_t mutexProgressQueue;           // mutex for counter of current progressing url
+	static pthread_mutex_t mutexProgressedCounter;       // mutex for counter of progressed URL
 
 private:
 	int number_of_threads;
+	int maxDepth;
 
-	static unordered_set<string> *UrlHash;
-	static queue<URLNode> *UrlQueue;
-	static queue<URLNode> *ProgressQueue;
-	static queue<URLNode> UrlQueueTemp;
+	static queue<URLNode> *UrlQueue;					// URL Queue, Singleton pattern
+	static queue<URLNode> UrlQueueTemp;					// temp queue for one worker
+
+	static bool isURLVisited(string url);
+	static bool insertURL(string url);
+	static bool insertResponseTime(string domain, double time);
+	static int callback(void *exist, int argc, char **argv, char **azColName);
+
 
 };
 
