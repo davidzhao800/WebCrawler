@@ -58,61 +58,7 @@ int URLNode::getPortNumber() {
 	return port_number;
 }
 
-
-//void URLNode::parseURL(){
-//
-//	int index = string_url.find("www.");
-//	if (index != string::npos) {
-//		string_url.erase(index,4);
-//	}
-//	if(string_url.back() == '/'){
-//		string_url.erase(string_url.length()-1,1);
-//	}
-//
-//	int start = 0;
-//    int found = string_url.find("//");
-//    if(found == string::npos){
-//        found = string_url.find("/");
-//    }
-//    else{
-//    	start = found+2;
-//        found = string_url.find("/",found+2);
-//    }
-//
-//    if(found == string::npos) {
-//    	this->attribute_url = "/";
-//    	found = string_url.find(":",start);
-//    	if(found == string::npos) {
-//    		this->domain = string_url.substr(start);
-//    	} else {
-//    		this->domain = string_url.substr(start,found);
-//    		this->port_number = stoi(string_url.substr(found+1));
-//    	}
-//    } else {
-//    	this->attribute_url = string_url.substr(found);
-//		string temp = string_url.substr(start, found - start);
-//
-//		found = temp.find(":");
-//		if (found == string::npos) {
-//			this->domain = temp;
-//		} else {
-//			this->domain = temp.substr(0, found);
-//
-//			this->port_number = stoi(temp.substr(found + 1));
-//		}
-//    }
-//}
-
 void URLNode::parseURL(){
-
-//	int index = string_url.find("www.");
-//	if (index != string::npos) {
-//		string_url.erase(index,4);
-//	}
-//	if(string_url.back() == '/'){
-//		string_url.erase(string_url.length()-1,1);
-//	}
-	//http://nus.edu.sg/haha/hahah.html
 
 	int start = 0;
 	int first_index = 0;

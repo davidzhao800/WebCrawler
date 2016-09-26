@@ -13,6 +13,7 @@
 #include <string>
 #include "URLNode.h"
 #include "gumbo.h"
+#include <sqlite3.h>
 #include <pthread.h>
 
 using namespace std;
@@ -23,6 +24,7 @@ public:
 	virtual ~WebCrawler();
 	bool downloadHTML();
 	bool extractURLs();
+	double getResponseTime();
 	string relativeToAbsolute(string str);
 	queue<URLNode> HtmlUrlQueue;
 private:
@@ -30,6 +32,7 @@ private:
 	pthread_t threadID;
 	URLNode node;
 	string htmlString;
+	double responseTime;
 	bool isRelativeURL(string str);
 	bool isHttpURL(string str);
 

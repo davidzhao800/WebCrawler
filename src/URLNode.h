@@ -34,15 +34,7 @@ public:
 	int getDepth();
 	int getPortNumber();
 
-
-//	bool isRelativeURL();
-//	void handleRelative();
 	void parseURL();
-	//string getFirstPiece(std::string& url);
-	//string toBaseURL(std::string& url);
-	//bool isValidAbsolute();
-	//string toString();
-	//void toAbsolute(std::string& relativeToUrl);
 };
 
 #endif /* URLNODE_H_ */

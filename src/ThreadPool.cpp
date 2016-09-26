@@ -7,6 +7,7 @@
 
 #include "ThreadPool.h"
 #include <iostream>
+#include <sqlite3.h>
 
 using namespace std;
 
@@ -59,6 +60,109 @@ void ThreadPool::destroyPool()
 
 }
 
+static int callback(void *exist, int argc, char **argv, char **azColName){
+   int i;
+   bool *tm=(bool*)exist;
+   for(i=0; i<argc; i++){
+	   *tm = true;
+   }
+   return 0;
+}
+
+bool isURLVisited(string url) {
+	sqlite3 * db;
+	char *zErrMsg = 0;
+	int rc;
+	char* sql;
+
+	bool exist = false;
+
+	rc = sqlite3_open("urlDB.db", &db);
+	if (rc) {
+		cout << "Can't open Database, quit!" << endl;
+		return false;
+	}
+//	} else {
+//		cout << "URL DB opened successfully!" << endl;
+//	}
+
+	string hah = "SELECT URL from URLHASH WHERE URL='" + url + "'";
+	sql=(char*)hah.c_str();
+	//sql = "SELECT URL from URLHASH WHERE URL='http://baidu.com'";
+
+	rc = sqlite3_exec(db, sql, callback, (char *) &exist, &zErrMsg);
+	if (rc != SQLITE_OK) {
+		//fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+	}
+//	} else {
+//		fprintf(stdout, "Operation done successfully\n");
+//	}
+
+	sqlite3_close(db);
+	return exist;
+}
+
+bool insertURL(string url) {
+	sqlite3 * db;
+	char *zErrMsg = 0;
+	int rc;
+	char* sql;
+
+	bool exist = false;
+
+	rc = sqlite3_open("urlDB.db", &db);
+	if (rc) {
+		cout << "Can't open Database, quit!" << endl;
+		return false;
+	}
+
+	string hah = "INSERT INTO URLHASH (URL) VALUES ('" + url + "'); ";
+	sql=(char*)hah.c_str();
+
+	rc = sqlite3_exec(db, sql, callback, (char *) &exist, &zErrMsg);
+	if (rc != SQLITE_OK) {
+		//fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+		return false;
+	}
+//	} else {
+//		//fprintf(stdout, "Records created successfully\n");
+//	}
+	sqlite3_close(db);
+	return true;
+}
+
+bool insertResponseTime(string domain, double time) {
+	sqlite3 * db;
+	char *zErrMsg = 0;
+	int rc;
+	char* sql;
+
+	bool exist = false;
+
+	rc = sqlite3_open("urlDB.db", &db);
+	if (rc) {
+		cout << "Can't open Database, quit!" << endl;
+		return false;
+	}
+
+	string hah = "INSERT INTO URLTIME (DOMAIN,TIME) VALUES ('" + domain + "',"+ to_string(time) +"); ";
+	sql=(char*)hah.c_str();
+
+	rc = sqlite3_exec(db, sql, callback, (char *) &exist, &zErrMsg);
+	if (rc != SQLITE_OK) {
+		//fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+		return false;
+	}
+//	} else {
+//		//fprintf(stdout, "Records created successfully\n");
+//	}
+	sqlite3_close(db);
+	return true;
+}
+
 
 void *ThreadPool::executeThread(void *param) {
 
@@ -95,8 +199,6 @@ void *ThreadPool::executeThread(void *param) {
 		N_Progressed +=1;
 		pthread_mutex_unlock(&mutexProgressedCounter);
 
-		cout << "UrlQueue size is: " <<UrlQueue->size() << " URL in progress is: " <<  N_inProgress << " URL progressed is: " <<  N_Progressed << " Depth: " << node.getDepth()  << endl;
-
 		if (node.getDepth() >= 4) {
 			cout << self_id << ": Depth " << node.getDepth() << " exceed max depth." << endl;
 			continue;
@@ -104,6 +206,8 @@ void *ThreadPool::executeThread(void *param) {
 		pthread_mutex_lock(&mutexProgressQueue);
 		N_inProgress += 1;
 		pthread_mutex_unlock(&mutexProgressQueue);
+
+		cout << "UrlQueue size is: " <<UrlQueue->size() << " URL in progress is: " <<  N_inProgress << " URL progressed is: " <<  N_Progressed << " Depth: " << node.getDepth()  << endl;
 
 		WebCrawler* webcrawlerwork = new WebCrawler(node, self_id);
 
@@ -116,6 +220,10 @@ void *ThreadPool::executeThread(void *param) {
 			delete webcrawlerwork;
 			continue;
 		}
+
+		pthread_mutex_lock(&mutexUrlHash);
+		insertResponseTime(node.getDomain(),webcrawlerwork->getResponseTime());
+		pthread_mutex_unlock(&mutexUrlHash);
 
 		cout << self_id  << ": Extracting " + node.getRawString() << endl;
 
@@ -135,13 +243,24 @@ void *ThreadPool::executeThread(void *param) {
 			URLNode NodeTemp = UrlQueueTemp.front();
 			UrlQueueTemp.pop();
 
-			unordered_set<std::string>::const_iterator got = UrlHash->find(
-					NodeTemp.getRawString());
-			if (got == UrlHash->end()) {
+//			unordered_set<std::string>::const_iterator got = UrlHash->find(
+//					NodeTemp.getRawString());
+
+			pthread_mutex_lock(&mutexUrlHash);
+			bool visited = isURLVisited(NodeTemp.getRawString());
+			pthread_mutex_unlock(&mutexUrlHash);
+
+
+			if (!visited) {
+//			if (got == UrlHash->end()) {
 				cout << self_id  << ": Got this new url: "<<NodeTemp.getRawString() << endl;
 
 				pthread_mutex_lock(&mutexUrlHash);
-				UrlHash->insert(NodeTemp.getRawString());
+				if (!insertURL(NodeTemp.getRawString())){
+					pthread_mutex_unlock(&mutexUrlHash);
+					continue;
+				}
+				//UrlHash->insert(NodeTemp.getRawString());
 				pthread_mutex_unlock(&mutexUrlHash);
 
 				pthread_mutex_lock(&mutexUrlQueue);
@@ -170,12 +289,13 @@ void *ThreadPool::executeThread(void *param) {
 }
 
 void ThreadPool::initializeThread() {
+
 	noWork = false;
 
 	URLNode firstnode;
 	//firstnode.setURL("http://www.comp.nus.edu.sg/~zhaojin/index.html", 1);
-	//firstnode.setURL("http://www.nus.edu.sg/oam/scholarships.html", 1);
-	firstnode.setURL("http://www.comp.nus.edu.sg/", 1);
+	firstnode.setURL("http://www.nus.edu.sg/oam/scholarships.html", 1);
+	//firstnode.setURL("http://www.comp.nus.edu.sg/", 1);
 
 	pthread_mutex_lock(&mutexUrlHash);
 	UrlHash->insert(firstnode.getRawString());
@@ -209,7 +329,6 @@ void ThreadPool::initializeThread() {
 	pthread_mutex_destroy(&mutexUrlHash);
 	delete UrlHash;
 	delete UrlQueue;
-
 
 }
 

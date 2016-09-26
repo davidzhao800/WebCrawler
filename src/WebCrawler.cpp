@@ -27,10 +27,14 @@ using namespace std::chrono;
 WebCrawler::WebCrawler(URLNode urlnode, pthread_t threadid) {
 	node = urlnode;
 	threadID = threadid;
+	htmlString.clear();
+	responseTime=0;
 }
 
 WebCrawler::~WebCrawler() {
-
+	htmlString.clear();
+	std::queue<URLNode> empty;
+	std::swap( HtmlUrlQueue, empty );
 }
 
 bool WebCrawler::downloadHTML() {
@@ -87,7 +91,7 @@ bool WebCrawler::downloadHTML() {
 //		return false;
 //	}
 
-	clock_t t1 = clock();
+
 	if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1) {
 	    perror("Connect Error");
 	    cout << threadID << ": Connect Error" << endl;
@@ -103,9 +107,11 @@ bool WebCrawler::downloadHTML() {
 			(node.getPath() + node.getAttributeURL()).c_str(), node.getDomain().c_str());
 
 	//	cout << t2 - t1 << " seconds elapsed\n" << endl;
+	clock_t t1 = clock();
 	int ret = send(sock,strRequest,sizeof(strRequest),0);
 
 	int flag=1;
+	bool flag2 = true;
 
 	while (flag) {
 		char buf[8192];
@@ -115,11 +121,17 @@ bool WebCrawler::downloadHTML() {
 //			if(htmlString.size() + 8191 > htmlString.max_size()) {
 //				cout << htmlString.size() << endl;
 //			}
+			if (flag2){
+				double t = clock() - t1;
+				responseTime = 1.0 * t / (CLOCKS_PER_SEC / 1000);
+				cout << threadID << ": response time of " << node.getDomain()
+						<< " is " << t / (CLOCKS_PER_SEC / 1000) << endl;
+				flag2 = false;
+			}
+
 			htmlString += buf;
 		} else if (ret == 0) {
 			flag = 0;
-			double t = clock() - t1;
-			cout << threadID << ": response time of " << node.getDomain() << " is " << t/(CLOCKS_PER_SEC/1000) << endl;
 			close (sock);
 			return true;
 
@@ -128,7 +140,12 @@ bool WebCrawler::downloadHTML() {
 		}
 	}
 	cout << threadID << "should not see this!" << endl;
-	return true;
+	return false;
+}
+
+double WebCrawler::getResponseTime() {
+
+	return responseTime;
 }
 
 bool WebCrawler::isRelativeURL(string url){
@@ -152,6 +169,8 @@ bool WebCrawler::extractURLs() {
 	GumboOutput* output = gumbo_parse(htmlString.c_str());
 
 	_extractURLs(output->root);
+
+	delete output;
 	return true;
 }
 
@@ -194,29 +213,15 @@ void WebCrawler::_extractURLs(GumboNode* gumboNode) {
 		return;
 	GumboAttribute* href;
 	if (gumboNode->v.element.tag == GUMBO_TAG_A
-			&& (href = gumbo_get_attribute(&gumboNode->v.element.attributes, "href"))) {
+			&& (href = gumbo_get_attribute(&gumboNode->v.element.attributes,
+					"href"))) {
 
 		URLNode newURL;
 		try {
 			string url = string(href->value);
-			//cout << url << endl;
+			delete href;
 			if (isRelativeURL(url)) {
 				url = relativeToAbsolute(url);
-//				int found = url.find("/");
-//				if (found != std::string::npos) {
-//					//url begins with /
-//					if (found == 0) {
-//						// domain name/<relative path>
-//						url = "http://" + node.getDomain() + url;
-//					}
-//					//there is a / , so subfolder
-//					else {
-//						//find last / of base url and append the url to this piece
-//						url = "http://" + node.getDomain() + node.getPath()  + url;
-//					}
-//				} else {
-//					url = "http://" + node.getDomain() + node.getPath()  + url;
-//				}
 			}
 			//cout << url << endl;
 
@@ -231,8 +236,10 @@ void WebCrawler::_extractURLs(GumboNode* gumboNode) {
 	}
 
 	GumboVector* children = &gumboNode->v.element.children;
-	for (unsigned int i = 0; i < children->length; ++i)
+	for (unsigned int i = 0; i < children->length; ++i){
 		_extractURLs(static_cast<GumboNode*>(children->data[i]));
+	}
+
+	delete gumboNode;
+
 }
-
-
