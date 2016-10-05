@@ -24,7 +24,6 @@ int main() {
 	myPool->destroy();
 	delete myPool;
 
-
 	return 0;
 }
 

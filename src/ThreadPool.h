@@ -38,6 +38,7 @@ public:
 
 private:
 	int number_of_threads;
+	int timeout;
 	int maxDepth;
 
 	static queue<URLNode> *UrlQueue;					// URL Queue, Singleton pattern

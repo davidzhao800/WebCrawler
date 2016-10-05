@@ -23,9 +23,11 @@ bool noWork;				// used to notify the end of crawler
 int N_inProgress;			// counter for currently progressing url
 int N_Progressed;			// counter for progressed url
 int max_depth = 4;
+int timeoutValue = 3;
 
 ThreadPool::ThreadPool() {
 	this->number_of_threads = 2;
+	this->timeout = 3;
 	this->maxDepth = 4;
 	N_inProgress = 0;
 	N_Progressed = 0;
@@ -265,8 +267,8 @@ void *ThreadPool::executeThread(void *param) {
 		N_inProgress -=1;
 		pthread_mutex_unlock(&mutexProgressQueue);
 
-		sleep(3);
 		delete webcrawlerwork;
+		sleep(timeoutValue);
 	}
 	return NULL;
 }
@@ -294,6 +296,20 @@ void ThreadPool::initializeThread() {
 
 	}
 
+	string timeoutvalue = "";
+	ifstream infile3("timeout.conf");
+
+	// handle file error
+	if (!infile3.is_open()) {
+		cerr << "timeout config is not opened correctly. Use 3 seconds"
+				<< endl;
+	} else {
+		getline(infile3, timeoutvalue);
+		cout << "Timeout: " << timeoutvalue << "s" << endl;
+		timeout = std::stoi(timeoutvalue);
+		timeoutValue = timeout;
+	}
+
 	string depth = "";
 	ifstream infile1("depth.conf");
 
@@ -316,6 +332,7 @@ void ThreadPool::initializeThread() {
 		return;
 	}
 
+	//add seed url into queue
 	while (getline(infile2, line)) {
 		if (line.length() == 0) continue;
 		URLNode seedNode;
@@ -334,6 +351,7 @@ void ThreadPool::initializeThread() {
 
 	infile.close();
 
+	// create thread and start them
 	pthread_t* threadArray = new pthread_t[number_of_threads];
 
    	for(int i = 0; i<number_of_threads; i++) {
@@ -346,7 +364,7 @@ void ThreadPool::initializeThread() {
 
 
 		cout << "Created thread " << threadArray[i] << endl;
-		sleep(3);
+		sleep(timeoutValue);
 	}
 
 	while (!noWork);

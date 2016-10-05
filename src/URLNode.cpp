@@ -79,7 +79,10 @@ void URLNode::parseURL(){
 	int colon_index = 0;
     int found = string_url.find("//");
 
-	start = found + 2;
+    if(found != string::npos && found <= 7){
+    	start = found + 2;
+    }
+
 	first_index = string_url.find("/", start);
 	last_index = string_url.find_last_of("/");
 	if (first_index == string::npos) {
